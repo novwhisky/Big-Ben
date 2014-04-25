@@ -7,16 +7,21 @@ var debug = true,
 
 if(debug === true) {
     setInterval(function() {
-        var d = new Date();
-        document.getElementById("debug").innerHTML = d.toLocaleString();
+        document.getElementById("debug").innerHTML = Clock.time();
     }, 1000);
 }
+
 
 var BigBen = (function() {
     function BigBen() {
 
+        var c = this;
+
         this.init = function init() {
             this._preloadAssets();
+
+            var mn = new Date(2014, 3, 25, 0, 0, 0);
+            new TimedAction(mn, c.midnight);
         };
 
         this._srcAudio = {
@@ -50,26 +55,92 @@ var BigBen = (function() {
             12: { s: 45491, e: 53550 }
         };
 
+        this.midnight = function midnight() {
+            Mixer.play(c._srcAudio.q4, 0, function() {
+                Mixer.play(c._srcAudio.strikes);
+            });
+        };
+
     }
 
     return new BigBen();
 })();
 
-var Clock =  {
-    //_timeFormat: "",
-    _events: {},
 
-    time: function time() {
-    },
+function TimedAction(timestamp, handler, interval) {
 
-    timeInMS: function timeInMS() {
-        return Date.now();
-    },
+    var c = this;
+    this.timestamp = timestamp;
+    this.handler = handler;
+    this.interval = interval || false;
+    this.timer = null;
+    this.lastExec = 0;
 
-    scheduleEvent: function scheduleEvent() {
+    this._init = function _init() {
+        this._scheduleNext();
+    };
 
+    this._scheduleNext = function _scheduleNext() {
+        var delay = this.timestamp - (this.lastExec || Date.now());
+        this.timer = setTimeout(this._actionHandler, delay);
+    };
+
+    this._actionHandler = function _actionHandler() {
+        c.handler.call(c);
+
+        if(c.interval) {
+            c.lastExec = c.timestamp;
+            c.timestamp = c.lastExec + c.interval;
+            c._scheduleNext();
+        }
+    };
+
+    this.stop = function stop() {
+        clearTimeout(this.timer);
+    };
+
+    this.finish = function finish() {
+        this.interval = 0;
     }
-};
+
+    this._init();
+}
+
+
+var Clock =  (function() {
+    function Clock() {
+
+        this._init = function _init() {};
+
+        this.time = function time() {
+            var d = new Date();
+            return (d.getHours() % 12) + ":" + ("0"+d.getMinutes()).slice(-2) + ":" + ("0"+d.getSeconds()).slice(-2);
+        };
+
+        this.timeInMS = function timeInMS() {
+            return Date.now();
+        };
+
+        this.parseTime = function (str) {
+            // Just h/m/s for now. Dates are hard.
+            var terms = str.split(":"),
+                ms = 0;
+
+            terms.reverse().forEach(function(v, idx, arr) {
+                if(Number(v) && idx <= 2)
+                    ms += Number(v) * Math.pow(60, idx);
+            });
+
+            return ms;
+        };
+
+        this._init();
+    }
+
+    return new Clock();
+})();
+
+
 
 var Mixer = (function() {
     function Mixer() {
@@ -101,7 +172,7 @@ var Mixer = (function() {
                     me.sounds[src] = buffer;
                     cb.call(null, src);
                 }
-                , function () { /* Decode Error */
+                , function () {
                     console.error("Decode error");
                 });
             };
@@ -122,13 +193,17 @@ var Mixer = (function() {
             }
         };
 
-        this.play = function play(src) {
+        this.play = function play(src, begin, cb) {
+            begin = begin || 0;
             var source = this.ctx.createBufferSource();
 
             this.load(src, function(url) {
                 source.buffer = me.sounds[url];
                 source.connect(me.ctx.destination);
-                source.start();
+                source.start(begin);
+
+                if(cb)
+                    source.onended = cb;
             });
         };
 
@@ -138,6 +213,8 @@ var Mixer = (function() {
 
     return new Mixer();
 })();
+
+
 
 $(document).ready(function() {
     BigBen.init();
