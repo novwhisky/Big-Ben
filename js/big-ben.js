@@ -17,11 +17,15 @@ var BigBen = (function() {
 
         var c = this;
 
+        this.hour = 60 * 60 * 1000;
+        this.nextHour = this.hour - (Date.now() % this.hour) + Date.now();
+        this.quarterHour = 15 * 60 * 1000;
+        this.nextQuarterHour = this.quarterHour - (Date.now() % this.quarterHour) + Date.now();
+        this.nextPreHour = this.nextHour - 22 * 60 * 1000; // 22-second lead-in to hour
+
         this.init = function init() {
             this._preloadAssets();
-
-            var mn = new Date(2014, 3, 25, 0, 0, 0);
-            new TimedAction(mn, c.midnight);
+            this._setupActions();
         };
 
         this._srcAudio = {
@@ -36,29 +40,51 @@ var BigBen = (function() {
 
         };
 
-        this.hourlyChime = function(hourNum) {
-            var normalized = hourNum % 12;
+        this._setupActions = function _setupActions() {
+            new TimedAction(c.nextQuarterHour, c.handleQuarterHour, c.quarterHour);
+            new TimedAction(c.nextPreHour, c.handlePreHour, c.hour);
+        };
+
+        this.handleQuarterHour = function handleQuarterHour() {
+            var d = new Date(this.timestamp),
+                h = 12 - (d.getHours() % 12),
+                m = d.getMinutes();
+
+            console.log("Hour number: " + h + " Quarter-hour minutes: " + m);
+
+            switch(m) {
+                case 0:
+                    Mixer.play(c._srcAudio.strikes, c.hourSegments[h].s);
+                    break;
+                case 15:
+                    Mixer.play(c._srcAudio.q1, 0);
+                    break;
+                case 30:
+                    Mixer.play(c._srcAudio.q2, 0);
+                    break;
+                case 45:
+                    Mixer.play(c._srcAudio.q3, 0);
+                    break;
+            }
+        };
+
+        this.handlePreHour = function handlePreHour() {
+            Mixer.play(c._srcAudio.q4, 0);
         };
 
         this.hourSegments = {
-            1: { s: 0, e: 4400 },
-            2: { s: 4445, e: 8684 },
-            3: { s: 8704, e: 12845 },
-            4: { s: 12863, e: 16862 },
-            5: { s: 16887, e: 20923 },
-            6: { s: 20957, e: 25000 },
-            7: { s: 25078, e: 29127 },
-            8: { s: 29149, e: 33155 },
-            9: { s: 33227, e: 37161 },
-            10: { s: 37238, e: 41286 },
-            11: { s: 41358, e: 45430 },
-            12: { s: 45491, e: 53550 }
-        };
-
-        this.midnight = function midnight() {
-            Mixer.play(c._srcAudio.q4, 0, function() {
-                Mixer.play(c._srcAudio.strikes);
-            });
+            12: { s: 0, e: 4400 },
+            11: { s: 4445, e: 8684 },
+            10: { s: 8704, e: 12845 },
+            9: { s: 12863, e: 16862 },
+            8: { s: 16887, e: 20923 },
+            7: { s: 20957, e: 25000 },
+            6: { s: 25078, e: 29127 },
+            5: { s: 29149, e: 33155 },
+            4: { s: 33227, e: 37161 },
+            3: { s: 37238, e: 41286 },
+            2: { s: 41358, e: 45430 },
+            1: { s: 45491, e: 53550 }
         };
 
     }
@@ -82,7 +108,9 @@ function TimedAction(timestamp, handler, interval) {
 
     this._scheduleNext = function _scheduleNext() {
         var delay = this.timestamp - (this.lastExec || Date.now());
-        this.timer = setTimeout(this._actionHandler, delay);
+
+        if(delay > -1)
+            this.timer = setTimeout(this._actionHandler, delay);
     };
 
     this._actionHandler = function _actionHandler() {
