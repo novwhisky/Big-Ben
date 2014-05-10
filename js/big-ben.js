@@ -53,7 +53,7 @@ var BigBen = (function() {
 
             switch(m) {
                 case 0:
-                    Mixer.play(c._srcAudio.strikes, c.hourSegments[h].s);
+                    Mixer.play(c._srcAudio.strikes, c.hourSegments[h].s / 1000);
                     break;
                 case 15:
                     Mixer.play(c._srcAudio.q1, 0);
@@ -227,7 +227,7 @@ var Mixer = (function() {
             this.load(src, function(url) {
                 source.buffer = me.sounds[url];
                 source.connect(me.ctx.destination);
-                source.start(begin);
+                source.start(0, begin);
 
                 if(cb)
                     source.onended = cb;
