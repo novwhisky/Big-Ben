@@ -28,9 +28,9 @@ var BigBen = (function() {
         };
 
         this._srcAudio = {
-            q1:     "sounds/5227__hyderpotter__big-ben/93143__hyderpotter__quarter.wav",
-            q2:     "sounds/5227__hyderpotter__big-ben/93142__hyderpotter__half.wav",
-            q3:     "sounds/5227__hyderpotter__big-ben/93141__hyderpotter__3quarter.wav",
+            q1:     "sounds/5227__hyderpotter__big-ben/93143__hyderpotter__quarter.mp3",
+            q2:     "sounds/5227__hyderpotter__big-ben/93142__hyderpotter__half.mp3",
+            q3:     "sounds/5227__hyderpotter__big-ben/93141__hyderpotter__3quarter.mp3",
             q4:     "sounds/5227__hyderpotter__big-ben/80289__hyderpotter__hourlychimebeg.mp3",
             strikes: "sounds/5227__hyderpotter__big-ben/80290__hyderpotter__bigbenstrikes.mp3"
         };
@@ -44,12 +44,12 @@ var BigBen = (function() {
             new TimedAction(c.nextPreHour, c.handlePreHour, c.hour);
         };
 
-        this.handleQuarterHour = function handleQuarterHour() {
-            var d = new Date(this.timestamp),
+        this.handleQuarterHour = function handleQuarterHour(e) {
+            var d = new Date(e.timestamp),
                 h = d.getHours() % 12,
                 m = d.getMinutes();
 
-            console.log("Hour number: " + h + " Quarter-hour minutes: " + m);
+            console.log("Hour number " + h + ". Quarter-hour: " + m);
 
             switch(m) {
                 case 0:
@@ -67,7 +67,7 @@ var BigBen = (function() {
             }
         };
 
-        this.handlePreHour = function handlePreHour() {
+        this.handlePreHour = function handlePreHour(e) {
             Mixer.play(c._srcAudio.q4, 0);
         };
 
@@ -113,7 +113,9 @@ function TimedAction(timestamp, handler, interval) {
     };
 
     this._actionHandler = function _actionHandler() {
-        c.handler.call(c);
+        var evt = { timestamp: c.timestamp };
+
+        c.handler(evt);
 
         if(c.interval) {
             c.lastExec = c.timestamp;
